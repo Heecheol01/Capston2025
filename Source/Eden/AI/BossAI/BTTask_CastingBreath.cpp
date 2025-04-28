@@ -4,15 +4,11 @@
 #include "AI/BossAI/BTTask_CastingBreath.h"
 
 #include "AIController.h"
-#include "MaterialHLSLTree.h"
 #include "AI/EAI.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Character/ECharacterBoss.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "NiagaraFunctionLibrary.h"
-#include "NiagaraComponent.h"
-#include "Kismet/KismetMathLibrary.h"
 
 UBTTask_CastingBreath::UBTTask_CastingBreath()
 {
@@ -78,16 +74,6 @@ void UBTTask_CastingBreath::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 
 	if (ElapsedTime < CastTime)
 	{
-		if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
-		{
-			FRotator CurrentRotation = BossCharcter->GetActorRotation();
-			FRotator TargetRotation = UKismetMathLibrary::FindLookAtRotation(BossCharcter->GetActorLocation(), PlayerPawn->GetActorLocation());
-			TargetRotation.Pitch = 0;
-			TargetRotation.Roll = 0;
-			const float RotateSpeed = 180.f;
-			FRotator NewRot = FMath::RInterpConstantTo(CurrentRotation, TargetRotation, DeltaSeconds, RotateSpeed);
-			BossCharcter->SetActorRotation(NewRot);
-		}
 		return;
 	}
 
@@ -104,23 +90,6 @@ void UBTTask_CastingBreath::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 		}
 	}
 
-	if (BreathVfxSystem && !bHasSpawnedVFX)
-	{
-		bHasSpawnedVFX = true;
-
-		const FVector  SocketLoc = BossCharcter->GetMesh()->GetSocketLocation(TEXT("MouthSocket"));
-		const FRotator ActorRot = BossCharcter->GetActorRotation();
-
-		UNiagaraFunctionLibrary::SpawnSystemAttached(
-			BreathVfxSystem,
-			BossCharcter->GetMesh(),
-			TEXT("MouthSocket"),
-			FVector::ZeroVector,
-			FRotator::ZeroRotator,
-			EAttachLocation::SnapToTarget,
-			true);
-	}
-
 	float TimeSinceBreathStart = ElapsedTime - CastTime;
 	if (TimeSinceBreathStart <= BreathTime)
 	{
@@ -128,24 +97,6 @@ void UBTTask_CastingBreath::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 
 		if (DamageAccum >= DamageInterval)
 		{
-			const FVector BreathOrigin = BossCharcter->GetMesh()->GetSocketLocation(TEXT("MouthSocket"));
-			const FVector ForwardDir = BossCharcter->GetActorForwardVector();
-
-#if ENABLE_DRAW_DEBUG
-			DrawDebugCone(
-				Boss->GetWorld(),
-				BreathOrigin,
-				ForwardDir,
-				Range,
-				FMath::DegreesToRadians(Angle),
-				FMath::DegreesToRadians(Angle),
-				12,
-				FColor::Red,
-				false,
-				0.1f  // Tick마다 재그리면 0.1초면 충분
-			);
-#endif
-			
 			TArray<AActor*> AllTargets;
 			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), AllTargets);
 
@@ -170,6 +121,20 @@ void UBTTask_CastingBreath::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 				}
 				
 			}
+#if ENABLE_DRAW_DEBUG
+			DrawDebugCone(
+				Boss->GetWorld(),
+				Boss->GetActorLocation(),
+				Boss->GetActorForwardVector(),
+				Range,
+				FMath::DegreesToRadians(Angle),
+				FMath::DegreesToRadians(Angle),
+				12,
+				FColor::Red,
+				false,
+				0.1f  // Tick마다 재그리면 0.1초면 충분
+			);
+#endif
 
 			DamageAccum = 0.f;
 		}
@@ -177,10 +142,12 @@ void UBTTask_CastingBreath::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 		return;
 	}
 
-	OwnerComp.GetBlackboardComponent()->SetValueAsBool(BBKEY_ISCASTING, false);
+	if (UBlackboardComponent* BBComp = OwnerComp.GetBlackboardComponent())
+	{
+		BBComp->SetValueAsBool(BBKEY_ISCASTING, false);
+	}
 
 	BossCharcter->GetCharacterMovement()->SetMovementMode(MOVE_NavWalking);
 
-	bHasSpawnedVFX = false;
 	FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
 }

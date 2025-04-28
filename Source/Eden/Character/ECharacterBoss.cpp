@@ -4,7 +4,6 @@
 #include "Character/ECharacterBoss.h"
 #include "AI/BossAI/EBossAIController.h"
 #include "CharacterStat/ECharacterStatComponent.h"
-#include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Engine/DamageEvents.h"
@@ -22,31 +21,13 @@ AECharacterBoss::AECharacterBoss()
 
 	GetCapsuleComponent()->SetCollisionProfileName(CPROFILE_ENPCCAPSULE);
 
-	// 2) 새로운 박스 콤포넌트 생성
-	BoxComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("BoxCollision"));
-	// 원하는 박스 크기
-	BoxComponent->InitBoxExtent(FVector(150.f, 160.f, 96.f));
-	BoxComponent->SetCollisionProfileName(CPROFILE_ENPCCAPSULE); // 또는 기존 캡슐 프로필
-	BoxComponent->SetCanEverAffectNavigation(false);
-	// 루트 컴포넌트로 설정
-	BoxComponent->SetupAttachment(GetCapsuleComponent());
-	
-	// 3) 메시를 박스에 붙이기
-	if (USkeletalMeshComponent* MeshComp = GetMesh())
-	{
-		MeshComp->SetupAttachment(BoxComponent);
-		// 메시 상대 위치·회전·스케일이 유지되도록
-		MeshComp->SetRelativeTransform(FTransform::Identity);
-		MeshComp->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
-	}
-
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> BossMeshRef(TEXT("/Script/Engine.SkeletalMesh'/Game/Creatures/Monster_Reptile/Mesh/SK_Reptile.SK_Reptile'"));
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> BossMeshRef(TEXT("/Script/Engine.SkeletalMesh'/Game/Eden/Characters/Warrok_W_Kurniawan.Warrok_W_Kurniawan'"));
 	if (BossMeshRef.Object)
 	{
 		GetMesh()->SetSkeletalMesh(BossMeshRef.Object);
 	}
 
-	static ConstructorHelpers::FClassFinder<UAnimInstance> BossAnimInstanceClassRef(TEXT("/Game/Eden/Animation/Boss/ABP_Boss.ABP_Boss_C"));
+	static ConstructorHelpers::FClassFinder<UAnimInstance> BossAnimInstanceClassRef(TEXT("/Game/Eden/Animation/Boss/ABP_EBoss.ABP_EBoss_C"));
 	if (BossAnimInstanceClassRef.Class)
 	{
 		GetMesh()->SetAnimInstanceClass(BossAnimInstanceClassRef.Class);
@@ -66,13 +47,13 @@ AECharacterBoss::AECharacterBoss()
 
 	HpBar = CreateDefaultSubobject<UEWidgetComponent>(TEXT("Widget"));
 	HpBar->SetupAttachment(GetMesh());
-	HpBar->SetRelativeLocation(FVector(0, 0, 300.0f));
+	HpBar->SetRelativeLocation(FVector(0, 0, 250.0f));
 	static ConstructorHelpers::FClassFinder<UUserWidget> HpBarWidgetRef(TEXT("/Game/Eden/UI/WBP_HpBarWidget.WBP_HpBarWidget_C"));
 	if (HpBarWidgetRef.Class)
 	{
 		HpBar->SetWidgetClass(HpBarWidgetRef.Class);
 		HpBar->SetWidgetSpace(EWidgetSpace::Screen);
-		HpBar->SetDrawSize(FVector2D(150.f, 10.f));
+		HpBar->SetDrawSize(FVector2D(100.f, 10.f));
 		HpBar->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 
@@ -84,7 +65,7 @@ void AECharacterBoss::BeginPlay()
 {
 	Super::BeginPlay();
 
-	Stat->SetMaxHp(3000.f);
+	Stat->SetMaxHp(1500.f);
 
 	if (AEBossAIController* BossAIController = Cast<AEBossAIController>(GetController()))
 	{
@@ -154,9 +135,9 @@ void AECharacterBoss::CloseAttackHitCheck()
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
 
 	// 공격 범위, 반경, 그리고 데미지 값을 정의합니다.
-	const float AttackRange = BossWeapon->AttackRange;
-	const float AttackRadius = BossWeapon->AttackRadius;
-	const float AttackDamage = BossWeapon->BaseDamage;
+	const float AttackRange = 400.f;
+	const float AttackRadius = 80.f;
+	const float AttackDamage = 50.f;
 
 	// 공격 시작 지점: 캐릭터 위치에 콜리전 캡슐 반경만큼 전진한 위치
 	const FVector Start = GetActorLocation() + GetActorForwardVector() * GetCapsuleComponent()->GetScaledCapsuleRadius();
@@ -198,12 +179,12 @@ float AECharacterBoss::GetAIPatrolRadius()
 
 float AECharacterBoss::GetAIDetectRange()
 {
-	return 2000.f;
+	return 1000.f;
 }
 
 float AECharacterBoss::GetAIAttackRange()
 {
-	return 800.f;
+	return 400.f;
 }
 
 float AECharacterBoss::GetAITurnSpeed()

@@ -27,13 +27,8 @@ private:
 
 	float ElapsedTime = 0.f;
 
-	UBehaviorTreeComponent* SavedOwnerComp = nullptr;
-
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Groggy)
 	class UAnimMontage* GroggyAnimMontage;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Groggy)
-	class UAnimMontage* RecoverAnimMontage; 
 	
 };

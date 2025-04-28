@@ -3,9 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "NiagaraSystem.h"
 #include "BehaviorTree/BTTaskNode.h"
-#include "Character/ECharacterBoss.h"
 #include "BTTask_WideAoE.generated.h"
 
 /**
@@ -27,19 +25,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Stagger)
 	UAnimMontage* AoEMontage;
 
-	UPROPERTY(EditAnywhere, Category = VFX)
-	UNiagaraSystem* AttackVfxSystem;
-
-	bool bHasSpawnedVFX = false;
-
-	void PlayVFX(AAIController* AIController, AECharacterBoss* Boss);
-
-	FTimerHandle TimerHandle;
-
 private:
 	float ElapsedTime = 0.f;
 	float CastTime = 1.5f;
-	float AoERadius = 3000.f;
+	float AoERadius = 1000.f;
 
 	bool bHasExploded = false;
 };

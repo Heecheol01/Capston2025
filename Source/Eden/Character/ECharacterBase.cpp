@@ -38,7 +38,7 @@ AECharacterBase::AECharacterBase()
 	GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh"));
 
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> CharacterMeshRef(TEXT("/Script/Engine.SkeletalMesh'/Game/Survivor/Meshes/Sk_Survivor01_A.Sk_Survivor01_A'"));
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> CharacterMeshRef(TEXT("/Script/Engine.SkeletalMesh'/Game/Characters/Mannequins/Meshes/SKM_Quinn_Simple.SKM_Quinn_Simple'"));
 	if (CharacterMeshRef.Object)
 	{
 		GetMesh()->SetSkeletalMesh(CharacterMeshRef.Object);
@@ -50,7 +50,7 @@ AECharacterBase::AECharacterBase()
 		GetMesh()->SetAnimInstanceClass(AnimInstanceClassRef.Class);
 	}
 
-	static ConstructorHelpers::FObjectFinder<UAnimMontage> DeadMontageRef(TEXT("/Script/Engine.AnimMontage'/Game/Eden/Animation/Default/Common/AM_Dead.AM_Dead'"));
+	static ConstructorHelpers::FObjectFinder<UAnimMontage> DeadMontageRef(TEXT("/Script/Engine.AnimMontage'/Game/Eden/Animation/Default/AM_Dead.AM_Dead'"));
 	if (DeadMontageRef.Object)
 	{
 		DeadMontage = DeadMontageRef.Object;

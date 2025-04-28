@@ -17,7 +17,9 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Inventory/EInventoryComponent.h"
 #include "Item/EArrow.h"
-#include "Item/ESkillPathVFX.h"
+#include "Item/EBothSkillVFXActor.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "Physics/ECollision.h"
 #include "UI/EHUDWidget.h"
 
@@ -297,15 +299,6 @@ void AECharacterPlayer::TryBowChargeEnd()
 
 void AECharacterPlayer::Attack()
 {
-	if (APlayerController* PC = Cast<APlayerController>(GetController()))
-	{
-		FRotator CamRot;
-		FVector CamLoc;
-		PC->GetPlayerViewPoint(CamLoc, CamRot);
-		FRotator NewYaw(0.f, CamRot.Yaw, 0.f);
-		SetActorRotation(NewYaw);
-	}
-	
 	ProcessComboCommand();
 }
 
@@ -655,8 +648,6 @@ APawn* AECharacterPlayer::FindNearestPawnInAttackRange()
 			}
 		}
 	}
-	else
-		UE_LOG(LogTemp, Error, TEXT("No bResult Found"));
 	
 	return NearestPawn;
 }
@@ -700,16 +691,60 @@ void AECharacterPlayer::ExecuteBothSkill()
 	SpawnSequentialVFX();
 }
 
+void AECharacterPlayer::SpawnNextVFX()
+{
+	if (VFXSpawnIndex < VFXSpawnLocations.Num()-1 && SkillEffect)
+	{
+		FVector SpawnLocation = VFXSpawnLocations[VFXSpawnIndex];
+		FRotator SpawnRotation = FRotator::ZeroRotator;
+		
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), SkillEffect, SpawnLocation, SpawnRotation);
+
+		VFXSpawnIndex++;
+
+		float DelayBetweenSpawns = 0.2f;
+		GetWorld()->GetTimerManager().SetTimer(VFXTimerHandle, this, &AECharacterPlayer::SpawnNextVFX, DelayBetweenSpawns, false);
+	}
+
+	if (VFXSpawnIndex == VFXSpawnLocations.Num()-1 && LastSkillEffect)
+	{
+		SpawnLastVFX();
+	}
+}
+
 void AECharacterPlayer::SpawnSequentialVFX()
 {
-	FVector StartLocation = GetMesh()->GetComponentLocation() + GetActorForwardVector() * 100.f;
-	FRotator ForwardVector = GetActorRotation();
+	FVector StartLocation = GetMesh()->GetComponentLocation();
+	FVector ForwardVector = GetActorForwardVector();
+
+	float TotalDistance = 1200.f;
+	const int32 NumVFX = 6;
+
+	VFXSpawnLocations.Empty();
+
+	for (int32 i = 1; i< NumVFX; i++)
+	{
+		float Fraction = (NumVFX > 1) ? (float)i / (NumVFX - 1) : 0.f;
+		FVector SpawnPos = StartLocation + ForwardVector * (TotalDistance * Fraction);
+		VFXSpawnLocations.Add(SpawnPos);
+	}
+
+	VFXSpawnIndex = 0;
+
+	SpawnNextVFX();
+}
+
+void AECharacterPlayer::SpawnLastVFX()
+{
+	FVector SpawnLocation = VFXSpawnLocations[VFXSpawnIndex];
+	FRotator SpawnRotation = FRotator::ZeroRotator;
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.Instigator = GetInstigator();
 
-	GetWorld()->SpawnActor<AESkillPathVFX>(SkillPathVFXActor, StartLocation, ForwardVector, SpawnParams);
+	// AEBothSkillVFXActor* LastVFX =
+	GetWorld()->SpawnActor<AEBothSkillVFXActor>(BothSkillVFXActor, SpawnLocation, SpawnRotation, SpawnParams);
 }
 
 void AECharacterPlayer::ExpGain(float InExp)
@@ -732,6 +767,7 @@ void AECharacterPlayer::SetupHUDWidget(class UEHUDWidget* InHUDWidget)
 		OnWeaponDataChanged.AddDynamic(InHUDWidget, &UEHUDWidget::UpdateSkillIcon);
 	}
 }
+
 
 void AECharacterPlayer::ToggleStatUI()
 {

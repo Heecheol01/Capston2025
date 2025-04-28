@@ -51,23 +51,10 @@ void AEArrow::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitive
 {
 	if (OtherActor && OtherComp && OtherActor != GetOwner())
 	{
-		FActorSpawnParameters SpawnParameters;
-		SpawnParameters.Owner = this;
-		SpawnParameters.Instigator = GetInstigator();
-		SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		
 		UGameplayStatics::ApplyDamage(OtherActor, Damage, GetInstigatorController(), this, nullptr);
 		FVector SpawnLoc = Hit.GetActor()->GetActorLocation() + FVector(0,0,100);
 		GetWorld()->SpawnActor<ADamageFloatingText>(ADamageFloatingText::StaticClass(),SpawnLoc,FRotator::ZeroRotator)->Init(Damage);
-
-		AActor* SpawnedEffect = GetWorld()->SpawnActor<AActor>(
-			Effect,
-			Hit.ImpactPoint,
-			Hit.ImpactNormal.Rotation(),
-			SpawnParameters
-		);
-
-		SpawnedEffect->SetLifeSpan(.5f);
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), TempParticle, Hit.ImpactPoint, Hit.ImpactNormal.Rotation());
 		
 		Destroy();
 	}

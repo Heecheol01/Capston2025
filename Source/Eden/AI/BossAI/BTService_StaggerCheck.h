@@ -20,5 +20,7 @@ public:
 	virtual void TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
 
 private:
-	float NextThreshold;
+	bool bIsTriggered85 = false;
+
+	bool bIsTriggered75 = false;;
 };

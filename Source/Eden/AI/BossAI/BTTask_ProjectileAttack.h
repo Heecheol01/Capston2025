@@ -27,7 +27,7 @@ protected:
 	TSubclassOf<class AEBossAttackableProjectile> ProjectileClass;
 
 	UPROPERTY(EditAnywhere, Category = Projectile)
-	FVector SpawnOffset = FVector(0.f, 0.f, 700.f);
+	FVector SpawnOffset = FVector(0.f, 0.f, 50.f);
 
 	UPROPERTY(EditAnywhere, Category = Projectile)
 	float LaunchSpeed = 1000.f;

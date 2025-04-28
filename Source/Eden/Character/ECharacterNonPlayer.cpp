@@ -8,7 +8,6 @@
 #include "UI/EWidgetComponent.h"
 #include "CharacterStat/ECharacterStatComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Item\EDroppedItem.h"
 #include "Physics/ECollision.h"
@@ -21,27 +20,23 @@ AECharacterNonPlayer::AECharacterNonPlayer()
 
 	GetCapsuleComponent()->SetCollisionProfileName(CPROFILE_ENPCCAPSULE);
 
-	static ConstructorHelpers::FObjectFinder<UENPCMeshDataAsset> NPCDataAssetRef(TEXT("/Script/Eden.ENPCMeshDataAsset'/Game/Eden/GameData/NCPCharacterData/DA_NPCCharData.DA_NPCCharData'"));
-	if (NPCDataAssetRef.Object)
+	static ConstructorHelpers::FObjectFinder<UEWeaponDataAsset> OneDataAssetRef(TEXT("/Script/Eden.EWeaponDataAsset'/Game/Eden/GameData/WeaponData/DA_NPCAttack.DA_NPCAttack'"));
+	if (OneDataAssetRef.Object)
 	{
-		NPCDataAsset = NPCDataAssetRef.Object;
+		CurrentWeaponData = OneDataAssetRef.Object;	
 	}
 
 	HpBar = CreateDefaultSubobject<UEWidgetComponent>(TEXT("Widget"));
 	HpBar->SetupAttachment(GetMesh());
-	HpBar->SetRelativeLocation(FVector(0, 0, 200.0f));
+	HpBar->SetRelativeLocation(FVector(0, 0, 250.0f));
 	static ConstructorHelpers::FClassFinder<UUserWidget> HpBarWidgetRef(TEXT("/Game/Eden/UI/WBP_HpBarWidget.WBP_HpBarWidget_C"));
 	if (HpBarWidgetRef.Class)
 	{
 		HpBar->SetWidgetClass(HpBarWidgetRef.Class);
-		HpBar->SetWidgetSpace(EWidgetSpace::World);
+		HpBar->SetWidgetSpace(EWidgetSpace::Screen);
 		HpBar->SetDrawSize(FVector2D(100.f, 10.f));
 		HpBar->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
-
-	GetMesh()->SetHiddenInGame(true);
-
-	PrimaryActorTick.bCanEverTick = true;
 }
 
 void AECharacterNonPlayer::BeginPlay()
@@ -49,33 +44,10 @@ void AECharacterNonPlayer::BeginPlay()
 	Super::BeginPlay();
 }
 
-void AECharacterNonPlayer::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-
-	if (HpBar)
-	{
-		APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-		if (PC && PC->PlayerCameraManager)
-		{
-			FVector CameraLocation = PC->PlayerCameraManager->GetCameraLocation();
-			FVector WidgetLocation = HpBar->GetComponentLocation();
-			FRotator NewRotation = (CameraLocation - WidgetLocation).Rotation();
-			HpBar->SetWorldRotation(NewRotation);
-		}
-	}
-}
-
 void AECharacterNonPlayer::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	if (!NPCDataAsset.IsNull())
-	{
-		FSoftObjectPath DataPath = NPCDataAsset.ToSoftObjectPath();
-		NPCDataHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(DataPath, FStreamableDelegate::CreateUObject(this, &AECharacterNonPlayer::OnNPCDataLoaded));
-	}
-	
 	Stat->SetMaxHp(100.f);
 }
 
@@ -89,9 +61,14 @@ void AECharacterNonPlayer::SetDead()
 		AEIController->StopGeneralAI();
 	}
 
-	HandleDrop();
-
-	HpBar->SetHiddenInGame(true);
+	AECharacterPlayer* Player = Cast<AECharacterPlayer>(UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
+	if (Player)
+	{
+		if (UECharacterStatComponent* StatComponent = Player->FindComponentByClass<UECharacterStatComponent>())
+		{
+			HandleDrop();
+		}
+	}
 
 	FTimerHandle DeadTimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(DeadTimerHandle, FTimerDelegate::CreateLambda(
@@ -102,114 +79,6 @@ void AECharacterNonPlayer::SetDead()
 	), DeadEventDelayTime, false);
 }
 
-void AECharacterNonPlayer::OnNPCDataLoaded()
-{
-	UENPCMeshDataAsset* Data = NPCDataAsset.Get();
-	if (Data && Data->NPCEntries.Num() > 0)
-	{
-		SelectedEntryIndex = FMath::RandRange(0, Data->NPCEntries.Num() - 1);
-		const FNPCMeshMaterialSet& Entry = Data->NPCEntries[SelectedEntryIndex];
-
-		if (Entry.AnimBlueprint.ToSoftObjectPath().IsValid())
-		{
-			AnimBPHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(Entry.AnimBlueprint.ToSoftObjectPath(), FStreamableDelegate::CreateUObject(this, &AECharacterNonPlayer::OnAnimBpLoaded));
-		}
-
-		if (Entry.AnimBlueprint.ToSoftObjectPath().IsValid())
-		{
-			WeaponDataHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(Entry.WeaponDataAsset.ToSoftObjectPath(), FStreamableDelegate::CreateUObject(this, &AECharacterNonPlayer::OnWeaponDataLoaded));
-		}
-
-		if (Entry.SkeletalMesh.ToSoftObjectPath().IsValid())
-		{
-			MeshHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(Entry.SkeletalMesh.ToSoftObjectPath(), FStreamableDelegate::CreateUObject(this, &AECharacterNonPlayer::OnMeshLoaded));
-		}
-
-		if (Entry.MaterialPaths.Num() > 0)
-		{
-			MaterialHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(Entry.MaterialPaths, FStreamableDelegate::CreateUObject(this, &AECharacterNonPlayer::OnMaterialsLoaded));
-		}
-	}
-}
-
-void AECharacterNonPlayer::OnAnimBpLoaded()
-{
-	if (AnimBPHandle.IsValid())
-	{
-		if (UAnimBlueprint* AnimBP = Cast<UAnimBlueprint>(AnimBPHandle->GetLoadedAsset()))
-		{
-			GetMesh()->SetAnimInstanceClass(AnimBP->GeneratedClass);
-		}
-	}
-}
-
-void AECharacterNonPlayer::OnWeaponDataLoaded()
-{
-	if (WeaponDataHandle.IsValid())
-	{
-		if(UEWeaponDataAsset* WeaponData = Cast<UEWeaponDataAsset>(WeaponDataHandle->GetLoadedAsset()))
-		{
-			CurrentWeaponData = WeaponData;
-		}
-	}
-}
-
-void AECharacterNonPlayer::OnMeshLoaded()
-{
-	if (MeshHandle.IsValid())
-	{
-		if (USkeletalMesh* NPCMesh = Cast<USkeletalMesh>(MeshHandle->GetLoadedAsset()))
-		{
-			GetMesh()->SetSkeletalMesh(NPCMesh);
-			GetMesh()->SetHiddenInGame(false);
-			
-			// 2) 로컬 바운드(피벗 기준) 구하기
-			//    Origin.Z = 피벗에서 바운드 중심까지의 높이
-			//    BoxExtent.Z = 바운드 절반 높이
-			const FBoxSphereBounds LocalBounds = NPCMesh->GetBounds();
-			const float Radius      = FMath::Max(LocalBounds.BoxExtent.X, LocalBounds.BoxExtent.Y);
-			const float HalfHeight  = LocalBounds.BoxExtent.Z;
-
-			// 3) 캡슐 크기 바꾸기 전 oldHalfHeight 저장
-			UCapsuleComponent* Capsule = GetCapsuleComponent();
-			const float OldHalfHeight = Capsule->GetUnscaledCapsuleHalfHeight();
-
-			// 4) 캡슐 재설정
-			Capsule->SetCapsuleSize(Radius, HalfHeight);
-
-			// 5) Actor 위치 보정: 바닥 높이를 유지하도록
-			const float DeltaHalf = HalfHeight - OldHalfHeight;
-			if (!FMath::IsNearlyZero(DeltaHalf))
-			{
-				AddActorWorldOffset(FVector(0, 0, DeltaHalf));
-			}
-
-			// 6) 메쉬 상대 위치 조정: 메쉬 바닥이 캡슐 바닥에 딱 붙도록
-			//    피벗에서 바운드 중심까지 올라간 만큼을 아래로 당겨 주면,
-			//    바운드 최저점(Origin.Z - HalfHeight)이 캡슐 바닥(-HalfHeight)과 일치합니다.
-			const float PivotOffsetZ = -LocalBounds.Origin.Z;
-			GetMesh()->SetRelativeLocation(FVector(0, 0, PivotOffsetZ - 20.f));
-		}
-	}
-}
-
-void AECharacterNonPlayer::OnMaterialsLoaded()
-{
-	if (MaterialHandle.IsValid())
-	{
-		TArray<UObject*> LoadedAssets;
-		MaterialHandle->GetLoadedAssets(LoadedAssets);
-
-		for (int32 Slot = 0; Slot < LoadedAssets.Num(); ++Slot)
-		{
-			if (UMaterialInterface* Mat = Cast<UMaterialInterface>(LoadedAssets[Slot]))
-			{
-				GetMesh()->SetMaterial(Slot, Mat);
-			}
-		}
-	}
-}
-
 float AECharacterNonPlayer::GetAIPatrolRadius()
 {
 	return 800.0f;
@@ -217,12 +86,12 @@ float AECharacterNonPlayer::GetAIPatrolRadius()
 
 float AECharacterNonPlayer::GetAIDetectRange()
 {
-	return 600.0f;
+	return 400.0f;
 }
 
 float AECharacterNonPlayer::GetAIAttackRange()
 {
-	return 300.0f;
+	return 140.0f;
 }
 
 float AECharacterNonPlayer::GetAITurnSpeed()
@@ -270,7 +139,7 @@ void AECharacterNonPlayer::HandleDrop()
 		UEItemDataAsset* ItemAsset = Entry.Item.LoadSynchronous();
 		if(!ItemAsset) continue;
 
-		FVector SpawnLoc = GetActorLocation() - 20.f;
+		FVector SpawnLoc = GetActorLocation();
 		FRotator SpawnRot = FRotator::ZeroRotator;
 
 		for (int32 i = 0; i < Count; i++)

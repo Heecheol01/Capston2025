@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Character/ECharacterBase.h"
-#include "Components/BoxComponent.h"
 #include "GameData/EItemDataAsset.h"
 #include "Interface/EBossAIInterface.h"
 #include "Interface/ECharacterWidgetInterface.h"
@@ -54,9 +53,6 @@ protected:
 	virtual void NotifyComboActionEnd() override;
 
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	UBoxComponent* BoxComponent;
-	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Widget, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UWidgetComponent> HpBar;
 

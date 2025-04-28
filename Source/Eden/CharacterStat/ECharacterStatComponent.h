@@ -67,8 +67,6 @@ protected:
 	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat)
 	float AttackRadius;
 
-	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat)
-	float Energy;
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Level)
 	int32 CurrentLevel = 1;
@@ -116,10 +114,7 @@ public:
 	FORCEINLINE int32 GetCurrentLevel() const { return CurrentLevel; }
 
 	UFUNCTION(BlueprintCallable)
-	FORCEINLINE float  GetCurrentExp() const { return CurrentExp; }
-
-	UFUNCTION(BlueprintCallable)
-	FORCEINLINE float GetCurrentEnergy() const { return Energy; }
+	FORCEINLINE int32  GetCurrentExp() const { return CurrentExp; }
 
 	UFUNCTION(BlueprintCallable)
 	FORCEINLINE float GetMaxHp() const { return BaseMaxHp + BonusMaxHp * 10; }

@@ -28,8 +28,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = Collision)
 	class UBoxComponent* CollisionComponent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<AActor> Effect; 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Particle)
+	TObjectPtr<class UParticleSystem> TempParticle;
 
 public:
 	UFUNCTION()

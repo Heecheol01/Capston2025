@@ -72,27 +72,13 @@ void UBTTask_Groggy::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemo
 
 	if (ElapsedTime >= WaitTime)
 	{
+		Boss->GetCharacterMovement()->SetMovementMode(MOVE_NavWalking);
+
 		OwnerComp.GetBlackboardComponent()->SetValueAsBool(BBKEY_ISSTAGGERED, false);
 		
-		UAnimInstance* AnimInstance = Boss->GetMesh()->GetAnimInstance();
-		AnimInstance->Montage_Play(RecoverAnimMontage);
-
-		SavedOwnerComp = &OwnerComp;
-
-		FOnMontageEnded EndDelegate;
-		EndDelegate.BindLambda([this](UAnimMontage* Montage, bool IsProperlyEnded)
-		{
-			if (AAIController* AICon = SavedOwnerComp->GetAIOwner())
-			{
-				if(AECharacterBoss* Boss = Cast<AECharacterBoss>(AICon->GetPawn()))
-				{
-					Boss->GetCharacterMovement()->SetMovementMode(MOVE_NavWalking);
-				}
-			}
-
-			FinishLatentTask(*SavedOwnerComp, EBTNodeResult::Succeeded);
-		});
-		
-		AnimInstance->Montage_SetEndDelegate(EndDelegate, RecoverAnimMontage);
+		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
 	}
 }
+
+
+
